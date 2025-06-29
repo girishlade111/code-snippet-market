@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Shield, Lock } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface AdminLoginProps {
   onLogin: () => void;
@@ -16,30 +17,40 @@ export const AdminLogin = ({ onLogin }: AdminLoginProps) => {
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
+  const { signIn } = useAuth();
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
 
-    // Default admin credentials as specified
+    // Check for default admin credentials first
     if (email === "admin@girish.com" && password === "@Girish111") {
       setTimeout(() => {
         onLogin();
         toast({
-          title: "Login Successful",
+          title: "Admin Login Successful",
           description: "Welcome to the admin panel!",
         });
         setIsLoading(false);
       }, 1000);
     } else {
-      setTimeout(() => {
+      // Try Supabase authentication for other users
+      const { error } = await signIn(email, password);
+      
+      if (error) {
         toast({
           title: "Login Failed",
-          description: "Invalid credentials. Please try again.",
+          description: "Invalid credentials. Please use admin credentials or sign up first.",
           variant: "destructive",
         });
-        setIsLoading(false);
-      }, 1000);
+      } else {
+        onLogin();
+        toast({
+          title: "Login Successful",
+          description: "Welcome to the admin panel!",
+        });
+      }
+      setIsLoading(false);
     }
   };
 
@@ -109,7 +120,7 @@ export const AdminLogin = ({ onLogin }: AdminLoginProps) => {
 
           <div className="mt-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
             <p className="text-sm text-blue-800">
-              <strong>Demo Credentials:</strong><br />
+              <strong>Admin Credentials:</strong><br />
               Email: admin@girish.com<br />
               Password: @Girish111
             </p>

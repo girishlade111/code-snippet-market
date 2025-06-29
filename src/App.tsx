@@ -13,6 +13,7 @@ import Ecommerce from "./pages/Ecommerce";
 import Personal from "./pages/Personal";
 import Crypto from "./pages/Crypto";
 import NotFound from "./pages/NotFound";
+import { CategoryPage } from "./components/CategoryPage";
 
 const queryClient = new QueryClient();
 
@@ -31,6 +32,7 @@ const App = () => (
             <Route path="/ecommerce" element={<Ecommerce />} />
             <Route path="/personal" element={<Personal />} />
             <Route path="/crypto" element={<Crypto />} />
+            <Route path="/category/:categoryId" element={<CategoryPage />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>

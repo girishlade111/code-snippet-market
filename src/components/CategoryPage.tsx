@@ -1,138 +1,154 @@
 
+import { useParams } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
-import { Eye, Download, Star, Search } from "lucide-react";
-import { useState } from "react";
+import { Eye, Download, ArrowLeft } from "lucide-react";
+import { Link } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
+import { Header } from "./Header";
+import { Footer } from "./Footer";
 
-interface Snippet {
-  id: number;
-  title: string;
-  description: string;
-  price: string;
-  rating: number;
-  downloads: number;
-  image: string;
-  tags: string[];
-}
+export const CategoryPage = () => {
+  const { categoryId } = useParams();
+  const { toast } = useToast();
 
-interface CategoryPageProps {
-  title: string;
-  description: string;
-  icon: React.ComponentType<{ className?: string }>;
-  color: string;
-  snippets: Snippet[];
-}
+  const { data: snippets = [], isLoading } = useQuery({
+    queryKey: ['category-snippets', categoryId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('snippets')
+        .select(`
+          *,
+          categories (
+            name,
+            slug
+          )
+        `)
+        .eq('categories.slug', categoryId)
+        .eq('status', 'active')
+        .order('created_at', { ascending: false });
+      
+      if (error) throw error;
+      return data;
+    }
+  });
 
-export const CategoryPage = ({ title, description, icon: IconComponent, color, snippets }: CategoryPageProps) => {
-  const [searchTerm, setSearchTerm] = useState("");
-  const [sortBy, setSortBy] = useState("popular");
+  const handleDownload = async (snippet: any) => {
+    const { error } = await supabase
+      .from('snippets')
+      .update({ downloads: (snippet.downloads || 0) + 1 })
+      .eq('id', snippet.id);
 
-  const filteredSnippets = snippets.filter(snippet =>
-    snippet.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    snippet.tags.some(tag => tag.toLowerCase().includes(searchTerm.toLowerCase()))
-  );
+    if (!error) {
+      toast({
+        title: "Download Started",
+        description: `${snippet.title} code is being prepared for download!`,
+      });
+      
+      const blob = new Blob([snippet.code_content || ''], { type: 'text/plain' });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${snippet.title.replace(/\s+/g, '-').toLowerCase()}.txt`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    }
+  };
+
+  const categoryName = snippets[0]?.categories?.name || categoryId?.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
 
   return (
-    <div className="py-12">
-      {/* Category Header */}
-      <section className="py-16 px-6 text-center">
-        <div className="container mx-auto">
-          <div className={`inline-flex items-center justify-center w-20 h-20 rounded-full bg-gradient-to-r ${color} mb-6`}>
-            <IconComponent className="h-10 w-10 text-white" />
-          </div>
-          <h1 className="text-5xl font-bold text-gray-900 mb-4">{title}</h1>
-          <p className="text-xl text-gray-600 max-w-2xl mx-auto mb-8">
-            {description}
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-purple-50">
+      <Header />
+      
+      <div className="container mx-auto px-6 py-12">
+        <div className="mb-8">
+          <Link to="/" className="inline-flex items-center text-blue-600 hover:text-blue-700 mb-4">
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Back to Home
+          </Link>
+          <h1 className="text-4xl font-bold text-gray-900 mb-2">{categoryName}</h1>
+          <p className="text-lg text-gray-600">
+            Browse {snippets.length} free code snippets in this category
           </p>
-          
-          {/* Search and Filter */}
-          <div className="flex flex-col sm:flex-row gap-4 justify-center items-center max-w-md mx-auto">
-            <div className="relative flex-1 w-full">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-              <Input
-                placeholder="Search snippets..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10"
-              />
-            </div>
-          </div>
         </div>
-      </section>
 
-      {/* Snippets Grid */}
-      <section className="px-6 pb-20">
-        <div className="container mx-auto">
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {filteredSnippets.map((snippet) => (
-              <Card key={snippet.id} className="group hover:shadow-2xl transition-all duration-300 hover:-translate-y-2 overflow-hidden border-0 bg-white">
-                <div className="relative overflow-hidden">
-                  <img 
-                    src={snippet.image} 
-                    alt={snippet.title}
-                    className="w-full h-48 object-cover transition-transform duration-300 group-hover:scale-105"
-                  />
-                  <div className="absolute top-4 right-4">
-                    <div className="bg-black/70 text-white px-2 py-1 rounded text-sm font-bold">
-                      {snippet.price}
+        {isLoading ? (
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {[...Array(6)].map((_, i) => (
+              <Card key={i} className="animate-pulse bg-gray-200 h-64"></Card>
+            ))}
+          </div>
+        ) : snippets.length > 0 ? (
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {snippets.map((snippet) => (
+              <Card key={snippet.id} className="group hover:shadow-xl transition-all duration-300 hover:-translate-y-1 border-0 bg-white/70 backdrop-blur-sm">
+                <CardHeader className="pb-4">
+                  {snippet.preview_image_url && (
+                    <div className="w-full h-48 mb-4 rounded-lg overflow-hidden bg-gray-100">
+                      <img 
+                        src={snippet.preview_image_url} 
+                        alt={snippet.title}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                      />
                     </div>
-                  </div>
-                </div>
-
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-lg font-bold text-gray-900 group-hover:text-blue-600 transition-colors">
+                  )}
+                  <CardTitle className="text-xl font-bold text-gray-900 group-hover:text-blue-600 transition-colors">
                     {snippet.title}
                   </CardTitle>
-                  <CardDescription className="text-gray-600 text-sm">
+                  <CardDescription className="text-gray-600">
                     {snippet.description}
                   </CardDescription>
                 </CardHeader>
-
+                
                 <CardContent className="pt-0">
-                  <div className="flex flex-wrap gap-1 mb-4">
-                    {snippet.tags.map((tag) => (
-                      <Badge key={tag} variant="outline" className="text-xs">
+                  <div className="flex flex-wrap gap-2 mb-4">
+                    {snippet.tags?.slice(0, 3).map((tag: string, index: number) => (
+                      <Badge key={index} variant="secondary" className="text-xs">
                         {tag}
                       </Badge>
                     ))}
                   </div>
-
-                  <div className="flex items-center justify-between text-sm text-gray-500 mb-4">
-                    <div className="flex items-center space-x-3">
-                      <div className="flex items-center">
-                        <Star className="h-4 w-4 text-yellow-400 fill-current mr-1" />
-                        <span>{snippet.rating}</span>
-                      </div>
-                      <div className="flex items-center">
+                  
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-2">
+                      <Button
+                        onClick={() => snippet.preview_image_url && window.open(snippet.preview_image_url, '_blank')}
+                        variant="outline"
+                        size="sm"
+                      >
+                        <Eye className="h-4 w-4 mr-1" />
+                        Preview
+                      </Button>
+                      <Button
+                        onClick={() => handleDownload(snippet)}
+                        size="sm"
+                        className="bg-gradient-to-r from-green-600 to-blue-600 hover:from-green-700 hover:to-blue-700"
+                      >
                         <Download className="h-4 w-4 mr-1" />
-                        <span>{snippet.downloads}</span>
-                      </div>
+                        Download
+                      </Button>
                     </div>
-                  </div>
-
-                  <div className="flex space-x-2">
-                    <Button variant="outline" size="sm" className="flex-1">
-                      <Eye className="h-4 w-4 mr-2" />
-                      Preview
-                    </Button>
-                    <Button size="sm" className="flex-1 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700">
-                      Buy Now
-                    </Button>
+                    <span className="text-lg font-bold text-green-600">FREE</span>
                   </div>
                 </CardContent>
               </Card>
             ))}
           </div>
-
-          {filteredSnippets.length === 0 && (
-            <div className="text-center py-12">
-              <p className="text-gray-500 text-lg">No snippets found matching your search.</p>
-            </div>
-          )}
-        </div>
-      </section>
+        ) : (
+          <div className="text-center py-12">
+            <h3 className="text-xl font-semibold text-gray-600 mb-2">No Snippets Yet</h3>
+            <p className="text-gray-500">Check back soon for new {categoryName} snippets!</p>
+          </div>
+        )}
+      </div>
+      
+      <Footer />
     </div>
   );
 };

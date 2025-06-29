@@ -1,7 +1,7 @@
 
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Code, User, LogOut } from "lucide-react";
+import { Code, User, LogOut, Shield } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import {
@@ -32,16 +32,13 @@ export const Header = () => {
             <Link to="/" className="text-gray-700 hover:text-blue-600 transition-colors">
               Home
             </Link>
-            <Link to="/portfolio" className="text-gray-700 hover:text-blue-600 transition-colors">
+            <Link to="/personal-portfolio" className="text-gray-700 hover:text-blue-600 transition-colors">
               Portfolio
             </Link>
             <Link to="/ecommerce" className="text-gray-700 hover:text-blue-600 transition-colors">
               E-Commerce
             </Link>
-            <Link to="/personal" className="text-gray-700 hover:text-blue-600 transition-colors">
-              Personal
-            </Link>
-            <Link to="/crypto" className="text-gray-700 hover:text-blue-600 transition-colors">
+            <Link to="/crypto-web3" className="text-gray-700 hover:text-blue-600 transition-colors">
               Crypto
             </Link>
           </nav>
@@ -57,7 +54,10 @@ export const Header = () => {
                 </DropdownMenuTrigger>
                 <DropdownMenuContent>
                   <DropdownMenuItem asChild>
-                    <Link to="/admin">Admin Panel</Link>
+                    <Link to="/admin" className="flex items-center">
+                      <Shield className="h-4 w-4 mr-2" />
+                      Admin Panel
+                    </Link>
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => signOut()}>
                     <LogOut className="h-4 w-4 mr-2" />
@@ -66,11 +66,19 @@ export const Header = () => {
                 </DropdownMenuContent>
               </DropdownMenu>
             ) : (
-              <Link to="/auth">
-                <Button className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700">
-                  Sign In
-                </Button>
-              </Link>
+              <div className="flex items-center space-x-2">
+                <Link to="/auth">
+                  <Button className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700">
+                    Sign In
+                  </Button>
+                </Link>
+                <Link to="/admin">
+                  <Button variant="outline" className="flex items-center space-x-2">
+                    <Shield className="h-4 w-4" />
+                    <span>Admin</span>
+                  </Button>
+                </Link>
+              </div>
             )}
             
             <Badge variant="outline" className="bg-green-100 text-green-800 border-green-300">

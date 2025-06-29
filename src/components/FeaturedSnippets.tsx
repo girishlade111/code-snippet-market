@@ -2,15 +2,15 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Eye, Download, Star } from "lucide-react";
+import { Eye, Download, Star, Code, ExternalLink } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { useState } from "react";
+import { useToast } from "@/hooks/use-toast";
 
 export const FeaturedSnippets = () => {
-  const [previewSnippet, setPreviewSnippet] = useState<any>(null);
+  const { toast } = useToast();
 
-  const { data: snippets, isLoading } = useQuery({
+  const { data: snippets = [], isLoading } = useQuery({
     queryKey: ['featured-snippets'],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -23,11 +23,11 @@ export const FeaturedSnippets = () => {
           )
         `)
         .eq('status', 'active')
-        .order('downloads', { ascending: false })
-        .limit(6);
+        .order('created_at', { ascending: false })
+        .limit(9);
       
       if (error) throw error;
-      return data || [];
+      return data;
     }
   });
 
@@ -39,24 +39,46 @@ export const FeaturedSnippets = () => {
       .eq('id', snippet.id);
 
     if (!error) {
-      // Create download file
-      const element = document.createElement('a');
-      const file = new Blob([snippet.code_content || ''], { type: 'text/plain' });
-      element.href = URL.createObjectURL(file);
-      element.download = `${snippet.title.replace(/\s+/g, '-').toLowerCase()}.txt`;
-      document.body.appendChild(element);
-      element.click();
-      document.body.removeChild(element);
+      toast({
+        title: "Download Started",
+        description: `${snippet.title} code is being prepared for download!`,
+      });
+      
+      // Create and trigger download
+      const blob = new Blob([snippet.code_content || ''], { type: 'text/plain' });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${snippet.title.replace(/\s+/g, '-').toLowerCase()}.txt`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    }
+  };
+
+  const handlePreview = (snippet: any) => {
+    if (snippet.preview_image_url) {
+      window.open(snippet.preview_image_url, '_blank');
+    } else {
+      toast({
+        title: "Preview",
+        description: `Viewing ${snippet.title}`,
+      });
     }
   };
 
   if (isLoading) {
     return (
-      <section className="py-20 px-6 bg-white/50">
+      <section className="py-20 px-6">
         <div className="container mx-auto">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-            <p className="mt-4 text-gray-600">Loading featured snippets...</p>
+          <div className="text-center mb-16">
+            <h2 className="text-4xl font-bold text-gray-900 mb-4">Featured Snippets</h2>
+          </div>
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {[...Array(6)].map((_, i) => (
+              <Card key={i} className="animate-pulse bg-gray-200 h-64"></Card>
+            ))}
           </div>
         </div>
       </section>
@@ -64,147 +86,89 @@ export const FeaturedSnippets = () => {
   }
 
   return (
-    <section className="py-20 px-6 bg-white/50">
+    <section className="py-20 px-6">
       <div className="container mx-auto">
         <div className="text-center mb-16">
-          <h2 className="text-4xl font-bold text-gray-900 mb-4">Featured Code Snippets</h2>
+          <h2 className="text-4xl font-bold text-gray-900 mb-4">Featured Snippets</h2>
           <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-            Hand-picked premium code snippets that developers love. 
-            High quality, well-documented, and completely free to download.
+            High-quality, free code snippets and templates uploaded by our admins. 
+            Download instantly and use in your projects.
           </p>
         </div>
 
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-          {snippets?.map((snippet) => (
-            <Card key={snippet.id} className="group hover:shadow-2xl transition-all duration-300 hover:-translate-y-2 overflow-hidden border-0 bg-white">
-              <div className="relative overflow-hidden">
-                {snippet.preview_image_url ? (
-                  <img 
-                    src={snippet.preview_image_url} 
-                    alt={snippet.title}
-                    className="w-full h-48 object-cover transition-transform duration-300 group-hover:scale-105"
-                  />
-                ) : (
-                  <div className="w-full h-48 bg-gradient-to-br from-blue-100 to-purple-100 flex items-center justify-center">
-                    <span className="text-gray-500 text-sm">No preview available</span>
+        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {snippets.map((snippet) => (
+            <Card key={snippet.id} className="group hover:shadow-xl transition-all duration-300 hover:-translate-y-1 border-0 bg-white/70 backdrop-blur-sm">
+              <CardHeader className="pb-4">
+                {snippet.preview_image_url && (
+                  <div className="w-full h-48 mb-4 rounded-lg overflow-hidden bg-gray-100">
+                    <img 
+                      src={snippet.preview_image_url} 
+                      alt={snippet.title}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                    />
                   </div>
                 )}
-                <div className="absolute top-4 left-4">
-                  <Badge variant="secondary" className="bg-white/90 text-gray-700">
+                <div className="flex items-center justify-between mb-2">
+                  <Badge variant="outline" className="bg-blue-50 text-blue-700">
                     {snippet.categories?.name || 'General'}
                   </Badge>
-                </div>
-                <div className="absolute top-4 right-4">
-                  <div className="bg-green-600 text-white px-2 py-1 rounded text-sm font-bold">
-                    FREE
+                  <div className="flex items-center space-x-1 text-sm text-gray-500">
+                    <Download className="h-4 w-4" />
+                    <span>{snippet.downloads || 0}</span>
                   </div>
                 </div>
-              </div>
-
-              <CardHeader className="pb-3">
-                <CardTitle className="text-lg font-bold text-gray-900 group-hover:text-blue-600 transition-colors">
+                <CardTitle className="text-xl font-bold text-gray-900 group-hover:text-blue-600 transition-colors">
                   {snippet.title}
                 </CardTitle>
-                <CardDescription className="text-gray-600 text-sm">
-                  {snippet.description || 'No description available'}
+                <CardDescription className="text-gray-600 line-clamp-2">
+                  {snippet.description}
                 </CardDescription>
               </CardHeader>
-
+              
               <CardContent className="pt-0">
-                <div className="flex flex-wrap gap-1 mb-4">
-                  {snippet.tags?.map((tag: string) => (
-                    <Badge key={tag} variant="outline" className="text-xs">
+                <div className="flex flex-wrap gap-2 mb-4">
+                  {snippet.tags?.slice(0, 3).map((tag: string, index: number) => (
+                    <Badge key={index} variant="secondary" className="text-xs">
                       {tag}
                     </Badge>
                   ))}
                 </div>
-
-                <div className="flex items-center justify-between text-sm text-gray-500 mb-4">
-                  <div className="flex items-center space-x-3">
-                    <div className="flex items-center">
-                      <Star className="h-4 w-4 text-yellow-400 fill-current mr-1" />
-                      <span>5.0</span>
-                    </div>
-                    <div className="flex items-center">
-                      <Download className="h-4 w-4 mr-1" />
-                      <span>{snippet.downloads || 0}</span>
-                    </div>
+                
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-2">
+                    <Button
+                      onClick={() => handlePreview(snippet)}
+                      variant="outline"
+                      size="sm"
+                      className="flex items-center space-x-1"
+                    >
+                      <Eye className="h-4 w-4" />
+                      <span>Preview</span>
+                    </Button>
+                    <Button
+                      onClick={() => handleDownload(snippet)}
+                      size="sm"
+                      className="bg-gradient-to-r from-green-600 to-blue-600 hover:from-green-700 hover:to-blue-700 flex items-center space-x-1"
+                    >
+                      <Download className="h-4 w-4" />
+                      <span>Download</span>
+                    </Button>
                   </div>
-                </div>
-
-                <div className="flex space-x-2">
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    className="flex-1"
-                    onClick={() => setPreviewSnippet(snippet)}
-                  >
-                    <Eye className="h-4 w-4 mr-2" />
-                    Preview
-                  </Button>
-                  <Button 
-                    size="sm" 
-                    className="flex-1 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700"
-                    onClick={() => handleDownload(snippet)}
-                  >
-                    <Download className="h-4 w-4 mr-2" />
-                    Download
-                  </Button>
+                  <div className="flex items-center space-x-1">
+                    <span className="text-lg font-bold text-green-600">FREE</span>
+                  </div>
                 </div>
               </CardContent>
             </Card>
           ))}
         </div>
 
-        {snippets?.length === 0 && (
+        {snippets.length === 0 && (
           <div className="text-center py-12">
-            <p className="text-gray-500 text-lg">No snippets available yet. Check back soon!</p>
-          </div>
-        )}
-
-        <div className="text-center mt-12">
-          <Button size="lg" variant="outline" className="px-8 py-3 text-lg border-2 border-blue-600 text-blue-600 hover:bg-blue-600 hover:text-white transition-all">
-            View All Snippets
-          </Button>
-        </div>
-
-        {/* Preview Modal */}
-        {previewSnippet && (
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-auto">
-              <div className="p-6">
-                <div className="flex justify-between items-start mb-4">
-                  <h3 className="text-2xl font-bold">{previewSnippet.title}</h3>
-                  <Button variant="outline" onClick={() => setPreviewSnippet(null)}>
-                    Close
-                  </Button>
-                </div>
-                {previewSnippet.preview_image_url && (
-                  <img 
-                    src={previewSnippet.preview_image_url} 
-                    alt={previewSnippet.title}
-                    className="w-full h-64 object-cover rounded mb-4"
-                  />
-                )}
-                <p className="text-gray-600 mb-4">{previewSnippet.description}</p>
-                <div className="bg-gray-100 p-4 rounded">
-                  <h4 className="font-semibold mb-2">Code Preview:</h4>
-                  <pre className="text-sm overflow-auto">
-                    {previewSnippet.code_content?.substring(0, 500) || 'No code preview available'}
-                    {previewSnippet.code_content?.length > 500 && '...'}
-                  </pre>
-                </div>
-                <div className="mt-4 flex justify-end">
-                  <Button 
-                    onClick={() => handleDownload(previewSnippet)}
-                    className="bg-gradient-to-r from-green-600 to-emerald-600"
-                  >
-                    <Download className="h-4 w-4 mr-2" />
-                    Download Full Code
-                  </Button>
-                </div>
-              </div>
-            </div>
+            <Code className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+            <h3 className="text-xl font-semibold text-gray-600 mb-2">No Snippets Yet</h3>
+            <p className="text-gray-500">Check back soon for new code snippets and templates!</p>
           </div>
         )}
       </div>

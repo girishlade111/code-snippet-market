@@ -1,6 +1,10 @@
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Palette, ShoppingCart, User, Bitcoin, Code, Smartphone, Briefcase, Camera, BookOpen, Users, Wrench, Calendar, Heart, Scale, AlertCircle } from "lucide-react";
+import { 
+  Palette, ShoppingCart, User, Bitcoin, Code, Smartphone, Briefcase, Camera, 
+  BookOpen, Users, Wrench, Calendar, Heart, Scale, AlertCircle, GraduationCap,
+  MessageCircle, Building, Globe, Gavel
+} from "lucide-react";
 import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -9,7 +13,7 @@ const categories = [
   {
     id: "personal-portfolio",
     title: "Personal & Portfolio",
-    description: "Personal portfolios, resumes, blogs, and freelancer showcases",
+    description: "Personal portfolios, resumes, blogs, freelancer showcases",
     icon: Palette,
     color: "from-blue-500 to-cyan-500"
   },
@@ -59,7 +63,7 @@ const categories = [
     id: "education-learning",
     title: "Education & Learning",
     description: "Course platforms, schools, LMS, and educational sites",
-    icon: BookOpen,
+    icon: GraduationCap,
     color: "from-teal-500 to-cyan-500"
   },
   {
@@ -101,7 +105,7 @@ const categories = [
     id: "legal-finance",
     title: "Legal, Finance & Consulting",
     description: "Law firms, financial advisors, insurance, and consulting",
-    icon: Scale,
+    icon: Gavel,
     color: "from-slate-500 to-gray-500"
   },
   {
@@ -152,7 +156,7 @@ export const CategorySection = () => {
             const IconComponent = category.icon;
             const count = snippetCounts?.[category.id] || 0;
             return (
-              <Link key={category.id} to={`/${category.id}`}>
+              <Link key={category.id} to={`/category/${category.id}`}>
                 <Card className="h-full hover:shadow-xl transition-all duration-300 hover:-translate-y-1 cursor-pointer group border-0 bg-white/70 backdrop-blur-sm">
                   <CardHeader className="pb-4">
                     <div className={`w-12 h-12 rounded-lg bg-gradient-to-r ${category.color} flex items-center justify-center mb-4 group-hover:scale-110 transition-transform`}>

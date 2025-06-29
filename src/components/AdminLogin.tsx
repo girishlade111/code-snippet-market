@@ -13,8 +13,8 @@ interface AdminLoginProps {
 }
 
 export const AdminLogin = ({ onLogin }: AdminLoginProps) => {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const [email, setEmail] = useState("admin@girish.com");
+  const [password, setPassword] = useState("@Girish111");
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
   const { signIn } = useAuth();
@@ -68,6 +68,19 @@ export const AdminLogin = ({ onLogin }: AdminLoginProps) => {
         </CardHeader>
 
         <CardContent>
+          <div className="mb-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
+            <p className="text-sm text-blue-800 font-medium mb-2">
+              <strong>Default Admin Access:</strong>
+            </p>
+            <p className="text-sm text-blue-700">
+              Email: admin@girish.com<br />
+              Password: @Girish111
+            </p>
+            <p className="text-xs text-blue-600 mt-2">
+              These credentials are pre-filled for easy access
+            </p>
+          </div>
+
           <form onSubmit={handleLogin} className="space-y-6">
             <div className="space-y-2">
               <Label htmlFor="email" className="text-sm font-medium text-gray-700">
@@ -112,19 +125,11 @@ export const AdminLogin = ({ onLogin }: AdminLoginProps) => {
               ) : (
                 <div className="flex items-center">
                   <Lock className="h-5 w-5 mr-2" />
-                  Sign In
+                  Sign In to Admin Panel
                 </div>
               )}
             </Button>
           </form>
-
-          <div className="mt-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
-            <p className="text-sm text-blue-800">
-              <strong>Admin Credentials:</strong><br />
-              Email: admin@girish.com<br />
-              Password: @Girish111
-            </p>
-          </div>
         </CardContent>
       </Card>
     </div>

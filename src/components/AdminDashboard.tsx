@@ -10,57 +10,131 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Upload, Eye, Edit, Trash2, Plus, Code, BarChart3, Users, DollarSign } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
-
-const mockSnippets = [
-  {
-    id: 1,
-    title: "Modern Dashboard Template",
-    category: "Portfolio",
-    price: "$29",
-    downloads: 1240,
-    status: "active"
-  },
-  {
-    id: 2,
-    title: "E-commerce Product Card",
-    category: "E-Commerce",
-    price: "$19",
-    downloads: 890,
-    status: "active"
-  },
-  {
-    id: 3,
-    title: "Crypto Portfolio Tracker",
-    category: "Crypto",
-    price: "$45",
-    downloads: 567,
-    status: "draft"
-  }
-];
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 
 export const AdminDashboard = () => {
   const [activeTab, setActiveTab] = useState("overview");
-  const [isUploading, setIsUploading] = useState(false);
+  const [uploadForm, setUploadForm] = useState({
+    title: '',
+    description: '',
+    category_id: '',
+    tags: '',
+    code_content: '',
+    preview_image_url: ''
+  });
   const { toast } = useToast();
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
 
-  const handleUpload = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsUploading(true);
-    
-    setTimeout(() => {
-      setIsUploading(false);
+  // Fetch categories
+  const { data: categories } = useQuery({
+    queryKey: ['categories'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('categories')
+        .select('*')
+        .order('name');
+      if (error) throw error;
+      return data;
+    }
+  });
+
+  // Fetch snippets
+  const { data: snippets = [] } = useQuery({
+    queryKey: ['admin-snippets'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('snippets')
+        .select(`
+          *,
+          categories (
+            name
+          )
+        `)
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      return data;
+    }
+  });
+
+  // Upload mutation
+  const uploadMutation = useMutation({
+    mutationFn: async (formData: typeof uploadForm) => {
+      const tagsArray = formData.tags.split(',').map(tag => tag.trim()).filter(tag => tag);
+      
+      const { error } = await supabase
+        .from('snippets')
+        .insert({
+          title: formData.title,
+          description: formData.description,
+          category_id: formData.category_id,
+          tags: tagsArray,
+          code_content: formData.code_content,
+          preview_image_url: formData.preview_image_url,
+          created_by: user?.id,
+          status: 'active'
+        });
+      
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-snippets'] });
+      queryClient.invalidateQueries({ queryKey: ['featured-snippets'] });
+      queryClient.invalidateQueries({ queryKey: ['snippet-counts'] });
+      setUploadForm({
+        title: '',
+        description: '',
+        category_id: '',
+        tags: '',
+        code_content: '',
+        preview_image_url: ''
+      });
       toast({
         title: "Upload Successful",
         description: "Your code snippet has been uploaded successfully!",
       });
-    }, 2000);
+    },
+    onError: (error) => {
+      toast({
+        title: "Upload Failed",
+        description: `Error: ${error.message}`,
+        variant: "destructive",
+      });
+    }
+  });
+
+  // Delete mutation
+  const deleteMutation = useMutation({
+    mutationFn: async (snippetId: string) => {
+      const { error } = await supabase
+        .from('snippets')
+        .delete()
+        .eq('id', snippetId);
+      
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-snippets'] });
+      queryClient.invalidateQueries({ queryKey: ['featured-snippets'] });
+      toast({
+        title: "Deleted Successfully",
+        description: "Snippet has been deleted.",
+      });
+    }
+  });
+
+  const handleUpload = async (e: React.FormEvent) => {
+    e.preventDefault();
+    uploadMutation.mutate(uploadForm);
   };
 
   const stats = [
-    { title: "Total Snippets", value: "156", icon: Code, color: "text-blue-600" },
-    { title: "Total Downloads", value: "12.4K", icon: BarChart3, color: "text-green-600" },
-    { title: "Active Users", value: "2.8K", icon: Users, color: "text-purple-600" },
-    { title: "Revenue", value: "$8.9K", icon: DollarSign, color: "text-yellow-600" }
+    { title: "Total Snippets", value: snippets.length.toString(), icon: Code, color: "text-blue-600" },
+    { title: "Total Downloads", value: snippets.reduce((sum, s) => sum + (s.downloads || 0), 0).toString(), icon: BarChart3, color: "text-green-600" },
+    { title: "Active Snippets", value: snippets.filter(s => s.status === 'active').length.toString(), icon: Users, color: "text-purple-600" },
+    { title: "Categories", value: categories?.length.toString() || "0", icon: DollarSign, color: "text-yellow-600" }
   ];
 
   return (
@@ -133,30 +207,6 @@ export const AdminDashboard = () => {
                   );
                 })}
               </div>
-
-              <Card className="bg-white/70 backdrop-blur-sm border-0">
-                <CardHeader>
-                  <CardTitle>Recent Activity</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                      <div>
-                        <p className="font-medium">New download: Modern Dashboard Template</p>
-                        <p className="text-sm text-gray-600">2 minutes ago</p>
-                      </div>
-                      <Badge>$29</Badge>
-                    </div>
-                    <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                      <div>
-                        <p className="font-medium">New user registration</p>
-                        <p className="text-sm text-gray-600">15 minutes ago</p>
-                      </div>
-                      <Badge variant="outline">User</Badge>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
             </div>
           )}
 
@@ -173,21 +223,30 @@ export const AdminDashboard = () => {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="space-y-2">
                       <Label htmlFor="title">Title</Label>
-                      <Input id="title" placeholder="Enter snippet title" required />
+                      <Input 
+                        id="title" 
+                        placeholder="Enter snippet title" 
+                        value={uploadForm.title}
+                        onChange={(e) => setUploadForm(prev => ({ ...prev, title: e.target.value }))}
+                        required 
+                      />
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="category">Category</Label>
-                      <Select required>
+                      <Select 
+                        value={uploadForm.category_id} 
+                        onValueChange={(value) => setUploadForm(prev => ({ ...prev, category_id: value }))}
+                        required
+                      >
                         <SelectTrigger>
                           <SelectValue placeholder="Select category" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="portfolio">Portfolio</SelectItem>
-                          <SelectItem value="ecommerce">E-Commerce</SelectItem>
-                          <SelectItem value="personal">Personal</SelectItem>
-                          <SelectItem value="crypto">Crypto</SelectItem>
-                          <SelectItem value="components">Components</SelectItem>
-                          <SelectItem value="mobile">Mobile</SelectItem>
+                          {categories?.map((category) => (
+                            <SelectItem key={category.id} value={category.id}>
+                              {category.name}
+                            </SelectItem>
+                          ))}
                         </SelectContent>
                       </Select>
                     </div>
@@ -199,37 +258,51 @@ export const AdminDashboard = () => {
                       id="description"
                       placeholder="Describe your code snippet"
                       className="min-h-20"
+                      value={uploadForm.description}
+                      onChange={(e) => setUploadForm(prev => ({ ...prev, description: e.target.value }))}
+                      required
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="code-content">Code Content</Label>
+                    <Textarea
+                      id="code-content"
+                      placeholder="Paste your code here..."
+                      className="min-h-32 font-mono text-sm"
+                      value={uploadForm.code_content}
+                      onChange={(e) => setUploadForm(prev => ({ ...prev, code_content: e.target.value }))}
                       required
                     />
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="space-y-2">
-                      <Label htmlFor="price">Price ($)</Label>
-                      <Input id="price" type="number" placeholder="0.00" required />
+                      <Label htmlFor="tags">Tags (comma separated)</Label>
+                      <Input 
+                        id="tags" 
+                        placeholder="React, CSS, JavaScript" 
+                        value={uploadForm.tags}
+                        onChange={(e) => setUploadForm(prev => ({ ...prev, tags: e.target.value }))}
+                      />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="tags">Tags (comma separated)</Label>
-                      <Input id="tags" placeholder="React, CSS, JavaScript" />
+                      <Label htmlFor="preview-image">Preview Image URL</Label>
+                      <Input 
+                        id="preview-image" 
+                        placeholder="https://example.com/image.jpg" 
+                        value={uploadForm.preview_image_url}
+                        onChange={(e) => setUploadForm(prev => ({ ...prev, preview_image_url: e.target.value }))}
+                      />
                     </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="code-file">Code Files</Label>
-                    <Input id="code-file" type="file" multiple accept=".html,.css,.js,.jsx,.ts,.tsx" />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="screenshot">Screenshot</Label>
-                    <Input id="screenshot" type="file" accept="image/*" />
                   </div>
 
                   <Button
                     type="submit"
-                    disabled={isUploading}
+                    disabled={uploadMutation.isPending}
                     className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
                   >
-                    {isUploading ? (
+                    {uploadMutation.isPending ? (
                       <div className="flex items-center">
                         <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
                         Uploading...
@@ -256,14 +329,14 @@ export const AdminDashboard = () => {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {mockSnippets.map((snippet) => (
+                  {snippets.map((snippet) => (
                     <div key={snippet.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
                       <div className="flex-1">
                         <h3 className="font-medium">{snippet.title}</h3>
                         <div className="flex items-center space-x-4 mt-1">
-                          <Badge variant="outline">{snippet.category}</Badge>
-                          <span className="text-sm text-gray-600">{snippet.downloads} downloads</span>
-                          <span className="text-sm font-medium text-green-600">{snippet.price}</span>
+                          <Badge variant="outline">{snippet.categories?.name}</Badge>
+                          <span className="text-sm text-gray-600">{snippet.downloads || 0} downloads</span>
+                          <span className="text-sm font-medium text-green-600">FREE</span>
                           <Badge variant={snippet.status === "active" ? "default" : "secondary"}>
                             {snippet.status}
                           </Badge>
@@ -278,13 +351,24 @@ export const AdminDashboard = () => {
                           <Edit className="h-4 w-4 mr-1" />
                           Edit
                         </Button>
-                        <Button variant="outline" size="sm" className="text-red-600 hover:text-red-700">
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          className="text-red-600 hover:text-red-700"
+                          onClick={() => deleteMutation.mutate(snippet.id)}
+                          disabled={deleteMutation.isPending}
+                        >
                           <Trash2 className="h-4 w-4 mr-1" />
                           Delete
                         </Button>
                       </div>
                     </div>
                   ))}
+                  {snippets.length === 0 && (
+                    <div className="text-center py-8 text-gray-500">
+                      No snippets uploaded yet.
+                    </div>
+                  )}
                 </div>
               </CardContent>
             </Card>

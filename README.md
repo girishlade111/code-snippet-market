@@ -1,73 +1,128 @@
-# Welcome to your Lovable project
+# Code Snippet Market
 
-## Project info
+A **marketplace-style web app for discovering, sharing, and managing reusable code snippets**, built with **React 18**, **TypeScript**, **Vite**, **shadcn/ui**, and **Tailwind CSS**, backed by **Supabase** (PostgreSQL + Auth).
 
-**URL**: https://lovable.dev/projects/d13dbd2a-6edf-4289-abf4-32409bdf6e7d
+Browse curated snippet collections by category (portfolio, e-commerce, personal, crypto, and more), preview code with syntax highlighting, copy it to your clipboard in one click, and — if you're an admin — manage categories and snippets from the built-in admin dashboard.
 
-## How can I edit this code?
+---
 
-There are several ways of editing your application.
+## ✨ Features
 
-**Use Lovable**
+- **Category browsing** — snippet collections organized into categories with dedicated category pages.
+- **Featured snippets** — hand-picked highlights on the landing page.
+- **Copy-to-clipboard** — one-click snippet copying.
+- **Search & discovery** — find snippets fast across categories.
+- **Authentication** — email/password sign-in and sign-up via Supabase Auth.
+- **Admin dashboard** — create, edit, and delete categories and snippets after admin login.
+- **Responsive UI** — full shadcn/ui component library (dialogs, dropdowns, toasts, tooltips, carousels) with dark-mode support via `next-themes`.
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/d13dbd2a-6edf-4289-abf4-32409bdf6e7d) and start prompting.
+### Routes
 
-Changes made via Lovable will be committed automatically to this repo.
+| Route | Description |
+| --- | --- |
+| `/` | Landing page — hero, featured snippets, category sections |
+| `/auth` | Sign in / sign up |
+| `/admin` | Admin dashboard (snippet & category management) |
+| `/portfolio`, `/ecommerce`, `/personal`, `/crypto` | Category landing pages |
+| `*` | Custom 404 page |
 
-**Use your preferred IDE**
+---
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+## 🛠️ Tech Stack
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+| Layer | Choices |
+| --- | --- |
+| Framework | **React 18** · **TypeScript 5** · **Vite 5** |
+| UI | **shadcn/ui** (Radix primitives) · **Tailwind CSS 3** · **lucide-react** |
+| Data & Auth | **Supabase** (PostgreSQL + Auth, `@supabase/supabase-js`) |
+| State/Data fetching | **TanStack React Query** · **React Hook Form** + **Zod** |
+| Routing | **react-router-dom** (BrowserRouter) |
+| Charts/UI extras | **recharts** · **embla-carousel** · **sonner** toasts |
 
-Follow these steps:
+---
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+## 📁 Project Structure
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+```
+code-snippet-market/
+├── index.html
+├── public/                      # Static assets
+├── src/
+│   ├── main.tsx                 # Entry point
+│   ├── App.tsx                  # Router + providers
+│   ├── pages/                   # Route pages (Index, Auth, Admin, Category pages…)
+│   ├── components/              # Hero, Header, Footer, CategorySection, FeaturedSnippets,
+│   │                            #   AdminDashboard, AdminLogin, CategoryPage + ui/ (shadcn)
+│   ├── contexts/                # AuthContext (Supabase session)
+│   ├── hooks/                   # Shared hooks
+│   ├── integrations/supabase/   # Supabase client (auto-generated) + DB types
+│   └── lib/                     # Utilities
+├── supabase/                    # Supabase config + SQL migrations
+├── vite.config.ts
+└── tailwind.config.ts
+```
 
-# Step 3: Install the necessary dependencies.
-npm i
+---
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
+## 🚀 Getting Started
+
+### Prerequisites
+- **Node.js 20+**
+- **npm**
+
+### 1. Clone and install
+
+```bash
+git clone https://github.com/girishlade111/code-snippet-market.git
+cd code-snippet-market
+npm install
+```
+
+### 2. Run the dev server
+
+```bash
 npm run dev
 ```
 
-**Edit a file directly in GitHub**
+Open the URL Vite prints (usually http://localhost:8080 or http://localhost:5173).
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+### 3. Production build
 
-**Use GitHub Codespaces**
+```bash
+npm run build
+npm run preview
+```
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+---
 
-## What technologies are used for this project?
+## ⚙️ Configuration / Environment Variables
 
-This project is built with:
+The Supabase project URL and publishable (anon) key are currently hard-coded in `src/integrations/supabase/client.ts` (generated by Lovable). To point the app at a different Supabase project, edit that file or refactor it to read from environment variables, e.g. `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` in a `.env` file (git-ignored). Database schema lives in `supabase/migrations/`.
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+Note: the admin dashboard expects the corresponding tables (categories, snippets) to exist in the connected Supabase project with appropriate Row Level Security policies.
 
-## How can I deploy this project?
+---
 
-Simply open [Lovable](https://lovable.dev/projects/d13dbd2a-6edf-4289-abf4-32409bdf6e7d) and click on Share -> Publish.
+## 📦 Deploy Notes
 
-## Can I connect a custom domain to my Lovable project?
+This is a static **Vite SPA**. Build output (`dist/`) is deployed to **GitHub Pages** from the `docs/` folder on the `main` branch. Because the app uses `BrowserRouter`, `dist/index.html` is copied to `dist/404.html` during the deploy step so client-side routes resolve correctly on GitHub Pages.
 
-Yes, you can!
+```bash
+npm run build
+cp dist/index.html dist/404.html
+# copy dist/ -> docs/ and push; Pages source: branch main, path /docs
+```
 
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
+---
 
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/tips-tricks/custom-domain#step-by-step-guide)
+## 📄 License
+
+Unlicensed — all rights reserved unless otherwise stated.
+
+---
+
+## 👤 Author
+
+Built by Girish Lade — [ladestack.in](https://ladestack.in)
+
+- GitHub: [@girishlade111](https://github.com/girishlade111)
